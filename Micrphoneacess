@@ -1,0 +1,33 @@
+from flask import Flask, Response, request
+from flask_socketio import SocketIO, emit
+import numpy as np
+import cv2
+from naoqi import ALProxy
+import vision_definitions
+
+app = Flask(__name__)
+socketio = SocketIO(app)
+
+# NAO robot IP and Port
+NAO_IP = "192.168.86.95"
+NAO_PORT = 9559
+
+@app.route('/video_feed')
+def video_feed():
+    # Existing video_feed function
+    pass
+
+@socketio.on('start_audio_capture')
+def handle_start_audio_capture():
+    # Code to start audio capture from NAO's microphone
+    # This could involve setting up an ALProxy to ALAudioDevice
+    # and subscribing to its events or data stream.
+    emit('audio_capture_started', {'status': 'Audio capture started'})
+
+@socketio.on('stop_audio_capture')
+def handle_stop_audio_capture():
+    # Code to stop audio capture
+    emit('audio_capture_stopped', {'status': 'Audio capture stopped'})
+
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0', port=5000)
