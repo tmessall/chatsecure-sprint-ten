@@ -1,0 +1,70 @@
+from flask import Flask, Response
+import cv2
+import numpy as np
+from naoqi import ALProxy
+import vision_definitions
+
+app = Flask(__name__)
+
+# NAO robot IP and Port
+NAO_IP = "192.168.86.95"  # Replace 'your_nao_ip' with your NAO robot's actual IP address
+NAO_PORT = 9559  # Default port
+
+# Create a proxy to ALVideoDevice on the robot
+try:
+    video_service = ALProxy("ALVideoDevice", NAO_IP, NAO_PORT)
+except Exception as e:
+    print("Could not create proxy to ALVideoDevice: {}".format(e))
+    exit(1)
+
+# Subscribe to the camera feed
+resolution = vision_definitions.kVGA  # 640x480
+colorSpace = vision_definitions.kRGBColorSpace
+fps = 20
+
+camera_index = 0  # 0 for the top camera, 1 for the bottom camera
+
+try:
+    video_client = video_service.subscribeCamera(
+        "python_client", camera_index, resolution, colorSpace, fps)
+except Exception as e:
+    print("Could not subscribe to camera: {}".format(e))
+    exit(1)
+
+def gen_frames():
+    while True:
+        # Obtain an image from the robot's camera
+        nao_image = video_service.getImageRemote(video_client)
+
+        if nao_image is None:
+            continue
+
+        # Get the image size and pixel array.
+        image_width = nao_image[0]
+        image_height = nao_image[1]
+        array = nao_image[6]
+        image_string = bytes(bytearray(array))
+
+        # Convert the string to an image
+        img = np.frombuffer(image_string, dtype=np.uint8)
+        img = img.reshape((image_height, image_width, 3))
+
+        # Encode the frame in JPEG format
+        (flag, encodedImage) = cv2.imencode(".jpg", img)
+        if not flag:
+            continue
+
+        # Yield the encoded image in byte format
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + 
+               encodedImage.tobytes() + b'\r\n')
+
+
+@app.route('/video_feed')
+def video_feed():
+    # Return the response generated along with the specific media
+    # type (mime type).
+    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
