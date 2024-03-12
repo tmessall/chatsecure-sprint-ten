@@ -1,0 +1,21 @@
+NAO Config
+from naoqi import ALProxy
+import vision_definitions
+
+IP = "192.168.86.95"  # Replace with your NAO robot's IP address
+PORT = 9559  # Default port for NAOqi
+
+# Create a proxy to ALVideoDevice
+video_service = ALProxy("ALVideoDevice", IP, PORT)
+
+# Subscribe to the camera feed
+resolution = vision_definitions.kVGA  # 640x480
+colorSpace = vision_definitions.kRGBColorSpace
+fps = 20
+
+camera_index = 0  # 0 for the top camera, 1 for the bottom camera
+
+video_client = video_service.subscribeCamera(
+    "python_client", camera_index, resolution, colorSpace, fps)
+
+# Now video_service.getImageRemote(video_client) can be used to get frames
